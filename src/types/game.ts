@@ -135,6 +135,16 @@ export interface LeaderboardEntry {
   isFriend?: boolean;
 }
 
+export interface FriendChallenge {
+  id: string;
+  challengerName: string;
+  targetScore: number;
+  bountyFeathers: number;
+  obstacleTheme?: ObstacleTheme;
+  timestamp: string;
+  status: 'pending' | 'won' | 'lost';
+}
+
 export interface DailyQuest {
   id: string;
   title: string;

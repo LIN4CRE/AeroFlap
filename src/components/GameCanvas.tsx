@@ -11,7 +11,8 @@ import {
   Pause,
   Feather,
   Flame,
-  Award
+  Award,
+  Swords
 } from 'lucide-react';
 import {
   GameState,
@@ -19,7 +20,8 @@ import {
   PlayerProfile,
   CharacterSkin,
   UserPreferences,
-  DailyQuest
+  DailyQuest,
+  FriendChallenge
 } from '../types/game';
 import { PhysicsEngine } from '../game/physics';
 import { GameRenderer } from '../game/renderer';
@@ -31,6 +33,8 @@ interface GameCanvasProps {
   obstacleSettings: ObstacleSettings;
   equippedSkin: CharacterSkin;
   preferences: UserPreferences;
+  activeChallenge?: FriendChallenge | null;
+  onCompleteChallenge?: (challenge: FriendChallenge, score: number) => void;
   onGameOver: (score: number, feathers: number) => void;
   onOpenShareModal: (score: number, feathers: number) => void;
   onOpenObstacles: () => void;
@@ -43,6 +47,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   obstacleSettings,
   equippedSkin,
   preferences,
+  activeChallenge,
+  onCompleteChallenge,
   onGameOver,
   onOpenShareModal,
   onOpenObstacles,
@@ -156,9 +162,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       isNewRecord: isNew
     });
 
+    if (activeChallenge && finalScore > activeChallenge.targetScore && onCompleteChallenge) {
+      onCompleteChallenge(activeChallenge, finalScore);
+    }
+
     setGameState('GAME_OVER');
     onGameOver(finalScore, finalFeathers);
-  }, [profile.highScore, onGameOver]);
+  }, [profile.highScore, activeChallenge, onCompleteChallenge, onGameOver]);
 
   // Game Loop
   useEffect(() => {
@@ -276,6 +286,24 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
             )}
           </div>
 
+          {/* Active Friend Challenge In-Flight Progress */}
+          {activeChallenge && (
+            <div
+              className={`px-3 py-1 rounded-full text-xs font-bold border backdrop-blur-md flex items-center gap-1.5 shadow-lg transition-all ${
+                currentScore > activeChallenge.targetScore
+                  ? 'bg-emerald-500/30 text-emerald-300 border-emerald-400 animate-pulse'
+                  : 'bg-slate-900/80 text-amber-300 border-amber-500/40'
+              }`}
+            >
+              <Swords className="w-3.5 h-3.5" />
+              <span>
+                {currentScore > activeChallenge.targetScore
+                  ? `TARGET CRUSHED! (+${activeChallenge.bountyFeathers} 🪶)`
+                  : `Duel vs ${activeChallenge.challengerName}: ${activeChallenge.targetScore} (Beat it!)`}
+              </span>
+            </div>
+          )}
+
           {/* Feathers collected in current flight */}
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1.5 px-3 py-1 bg-black/40 backdrop-blur-md rounded-full border border-white/10 text-amber-400">
@@ -314,6 +342,23 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
               <span aria-hidden="true">·</span>
               <span>{obstacleSettings.theme.replace('_', ' ')}</span>
             </div>
+
+            {/* Active Challenge Notification Banner */}
+            {activeChallenge && (
+              <div className="mt-3 mx-auto max-w-sm p-3 rounded-2xl bg-amber-950/70 border border-amber-400/60 shadow-lg text-center animate-fadeIn">
+                <div className="flex items-center justify-center gap-1.5 text-xs font-black text-amber-300">
+                  <Swords className="w-4 h-4" />
+                  <span>INCOMING FLIGHT DUEL</span>
+                </div>
+                <p className="text-xs text-slate-100 mt-0.5">
+                  Pilot <strong>{activeChallenge.challengerName}</strong> challenges you to beat their score of <strong className="font-mono text-amber-300">{activeChallenge.targetScore}</strong>!
+                </p>
+                <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-amber-300 mt-1">
+                  <Feather className="w-3 h-3" />
+                  <span>Win +{activeChallenge.bountyFeathers} Star Feathers Bounty</span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Center Flap Launch Button */}
@@ -432,6 +477,43 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
                 </div>
               </div>
             </div>
+
+            {/* Friend Challenge Outcome Card */}
+            {activeChallenge && (
+              <div
+                className={`p-3 rounded-2xl border text-xs text-center mb-4 transition-all ${
+                  lastRunStats.score > activeChallenge.targetScore
+                    ? 'bg-gradient-to-r from-emerald-950/60 to-slate-900 border-emerald-400 text-emerald-200 shadow-md ring-1 ring-emerald-500/30'
+                    : 'bg-slate-800/60 border-amber-500/30 text-slate-300'
+                }`}
+              >
+                {lastRunStats.score > activeChallenge.targetScore ? (
+                  <div className="space-y-1">
+                    <div className="font-black flex items-center justify-center gap-1.5 text-emerald-300 text-sm">
+                      <Swords className="w-4 h-4 text-emerald-400" />
+                      <span>FRIEND CHALLENGE WON!</span>
+                    </div>
+                    <p className="text-[11px] text-slate-200">
+                      You beat <strong>{activeChallenge.challengerName}</strong>'s target of {activeChallenge.targetScore} with <span className="font-mono font-bold text-emerald-300">{lastRunStats.score}</span>!
+                    </p>
+                    <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 font-bold text-xs mt-1 border border-emerald-500/40">
+                      <Feather className="w-3 h-3 text-amber-400" />
+                      <span>+{activeChallenge.bountyFeathers} Bounty Awarded!</span>
+                    </span>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <div className="font-bold flex items-center justify-center gap-1 text-amber-400 text-xs">
+                      <Swords className="w-3.5 h-3.5" />
+                      <span>Target: {activeChallenge.targetScore + 1} to beat {activeChallenge.challengerName}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-400">
+                      You scored {lastRunStats.score}. Needed {Math.max(1, activeChallenge.targetScore + 1 - lastRunStats.score)} more obstacle(s) to win +{activeChallenge.bountyFeathers} 🪶!
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Primary Action Buttons */}
             <div className="space-y-2.5">

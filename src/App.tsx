@@ -26,6 +26,7 @@ import {
   contributePipesToCommunity,
   claimCommunityMilestone,
   claimCommunityGrandReward,
+  recordChallengeOutcome,
   DEFAULT_OBSTACLE_SETTINGS,
   DEFAULT_PREFERENCES
 } from './utils/storage';
@@ -47,7 +48,8 @@ import {
   AppNotification,
   SkinId,
   CloudSavePayload,
-  CommunityChallenge
+  CommunityChallenge,
+  FriendChallenge
 } from './types/game';
 
 import { TopNav } from './components/TopNav';
@@ -91,6 +93,30 @@ export default function App() {
 
   // Equipped skin object
   const equippedSkin = skins.find((s) => s.id === profile.avatarSkin) || skins[0];
+
+  // Incoming or active friend duel from shared link
+  const [activeFriendChallenge, setActiveFriendChallenge] = useState<FriendChallenge | null>(() => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('challenge') === '1') {
+        const challenger = params.get('challenger') || 'RivalPilot';
+        const targetScore = parseInt(params.get('targetScore') || '15', 10);
+        const bounty = parseInt(params.get('bounty') || '100', 10);
+        return {
+          id: 'url_duel_' + Date.now(),
+          challengerName: challenger,
+          targetScore,
+          bountyFeathers: bounty,
+          timestamp: 'Incoming Link',
+          status: 'pending'
+        };
+      }
+    } catch {
+      // fallback
+    }
+    return null;
+  });
 
   // Sync sound & haptics settings
   useEffect(() => {
@@ -522,6 +548,36 @@ export default function App() {
     );
   };
 
+  // Complete Friend Challenge & Claim Bounty Feathers
+  const handleCompleteChallenge = (challenge: FriendChallenge, score: number) => {
+    soundFx.playFanfare();
+    try {
+      confetti({ particleCount: 95, spread: 75, origin: { y: 0.45 } });
+    } catch {
+      // fallback
+    }
+
+    setProfile((prev) => {
+      const updated = {
+        ...prev,
+        starFeathers: prev.starFeathers + challenge.bountyFeathers
+      };
+      saveProfile(updated);
+      return updated;
+    });
+
+    recordChallengeOutcome(challenge.id, 'won');
+
+    triggerPushNotification(
+      'Challenge Bounty Claimed! ⚔️',
+      `+${challenge.bountyFeathers} Star Feathers awarded for beating ${challenge.challengerName}'s score of ${challenge.targetScore} (Your Score: ${score})!`,
+      'achievement',
+      preferences
+    );
+
+    setActiveFriendChallenge((prev) => (prev ? { ...prev, status: 'won' } : null));
+  };
+
   // Open Score Sharing modal
   const handleOpenShareModal = (score: number, feathers: number) => {
     setShareRunData({ score, feathers });
@@ -592,6 +648,8 @@ export default function App() {
           obstacleSettings={obstacleSettings}
           equippedSkin={equippedSkin}
           preferences={preferences}
+          activeChallenge={activeFriendChallenge}
+          onCompleteChallenge={handleCompleteChallenge}
           onGameOver={handleGameOver}
           onOpenShareModal={handleOpenShareModal}
           onOpenObstacles={() => setActiveModal('obstacles')}
@@ -638,6 +696,10 @@ export default function App() {
           communityChallenge={communityChallenge}
           onClaimMilestone={handleClaimCommunityMilestone}
           onClaimCommunityReward={handleClaimCommunityReward}
+          onStartFriendChallenge={(c) => {
+            setActiveFriendChallenge(c);
+            setActiveModal(null);
+          }}
           onClose={() => setActiveModal(null)}
         />
       )}

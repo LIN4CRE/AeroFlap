@@ -14,7 +14,8 @@ import {
   CloudSavePayload,
   LeaderboardEntry,
   SkinId,
-  CommunityChallenge
+  CommunityChallenge,
+  FriendChallenge
 } from '../types/game';
 import { INITIAL_SKINS } from '../data/skins';
 import { INITIAL_QUESTS, INITIAL_WEEKLY_MISSIONS, ALL_LEGENDARY_BADGES } from '../data/quests';
@@ -28,6 +29,7 @@ const STORAGE_KEY_PREFS = 'aeroflap_prefs_v2';
 const STORAGE_KEY_OFFLINE_QUEUE = 'aeroflap_offline_queue_v2';
 const STORAGE_KEY_LEADERBOARD = 'aeroflap_leaderboard_cache_v2';
 const STORAGE_KEY_COMMUNITY = 'aeroflap_community_challenge_v2';
+const STORAGE_KEY_FRIEND_CHALLENGES = 'aeroflap_friend_challenges_v2';
 
 export const DEFAULT_OBSTACLE_SETTINGS: ObstacleSettings = {
   theme: 'CYBER_LASER',
@@ -327,6 +329,77 @@ export function claimCommunityGrandReward(): { updated: CommunityChallenge; rewa
   };
   saveCommunityChallenge(updated);
   return { updated, rewardFeathers: 500 };
+}
+
+// Initial friend duels to showcase the challenge system
+export const INITIAL_FRIEND_CHALLENGES: FriendChallenge[] = [
+  {
+    id: 'duel_pixel_god',
+    challengerName: 'PixelGod_99',
+    targetScore: 28,
+    bountyFeathers: 150,
+    obstacleTheme: 'PIXEL_BRICKS',
+    timestamp: '2h ago',
+    status: 'pending'
+  },
+  {
+    id: 'duel_aero_cloud',
+    challengerName: 'AeroCloud',
+    targetScore: 19,
+    bountyFeathers: 100,
+    obstacleTheme: 'CYBER_LASER',
+    timestamp: '5h ago',
+    status: 'pending'
+  }
+];
+
+export function loadFriendChallenges(): FriendChallenge[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_FRIEND_CHALLENGES);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.error('Error loading friend challenges', e);
+  }
+  return INITIAL_FRIEND_CHALLENGES;
+}
+
+export function saveFriendChallenges(challenges: FriendChallenge[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_FRIEND_CHALLENGES, JSON.stringify(challenges));
+  } catch (e) {
+    console.error('Error saving friend challenges', e);
+  }
+}
+
+export function createFriendChallenge(
+  challengerName: string,
+  targetScore: number,
+  bountyFeathers = 100,
+  obstacleTheme?: ObstacleTheme
+): FriendChallenge {
+  const newChallenge: FriendChallenge = {
+    id: 'duel_' + Math.random().toString(36).substring(2, 9),
+    challengerName,
+    targetScore: Math.max(1, targetScore),
+    bountyFeathers,
+    obstacleTheme,
+    timestamp: 'Just now',
+    status: 'pending'
+  };
+
+  const current = loadFriendChallenges();
+  const updated = [newChallenge, ...current.slice(0, 9)];
+  saveFriendChallenges(updated);
+  return newChallenge;
+}
+
+export function recordChallengeOutcome(challengeId: string, outcome: 'won' | 'lost'): FriendChallenge[] {
+  const current = loadFriendChallenges();
+  const updated = current.map((c) => (c.id === challengeId ? { ...c, status: outcome } : c));
+  saveFriendChallenges(updated);
+  return updated;
 }
 
 // Global leaderboard seed generator for vibrant competition

@@ -2,6 +2,7 @@ import React from 'react';
 import { X, Lock, Check, Sparkles, Feather, Shield, Volume2 } from 'lucide-react';
 import { CharacterSkin, PlayerProfile, SkinId } from '../types/game';
 import { soundFx } from '../utils/audio';
+import { Skin3DPreview } from './Skin3DPreview';
 
 interface SkinsLockerProps {
   skins: CharacterSkin[];
@@ -140,7 +141,7 @@ export const SkinsLockerModal: React.FC<SkinsLockerProps> = ({
           </div>
 
           {/* Details & Inspection Panel */}
-          <div className="md:col-span-5 bg-slate-800/40 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between">
+          <div className="md:col-span-5 bg-slate-800/40 border border-slate-800 rounded-2xl p-4 sm:p-5 flex flex-col justify-between gap-4 overflow-y-auto">
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-md border ${getRarityBadgeColor(selectedSkin.rarity)}`}>
@@ -152,8 +153,14 @@ export const SkinsLockerModal: React.FC<SkinsLockerProps> = ({
                 </span>
               </div>
 
+              {/* 3D-Like Rotating Turntable Preview Stage */}
+              <Skin3DPreview
+                skin={selectedSkin}
+                onTestSound={() => handleTestSound(selectedSkin.pitchModifier)}
+              />
+
               <div>
-                <h3 className="text-xl font-bold font-display text-white">{selectedSkin.name}</h3>
+                <h3 className="text-lg sm:text-xl font-bold font-display text-white">{selectedSkin.name}</h3>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
                   {selectedSkin.description}
                 </p>
