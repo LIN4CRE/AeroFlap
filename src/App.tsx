@@ -14,6 +14,8 @@ import {
   saveUnlockedSkins,
   loadQuests,
   saveQuests,
+  loadWeeklyMissions,
+  saveWeeklyMissions,
   loadPreferences,
   savePreferences,
   getLeaderboard,
@@ -37,6 +39,8 @@ import {
   ObstacleSettings,
   CharacterSkin,
   DailyQuest,
+  WeeklyMission,
+  LegendaryBadge,
   SeasonalEvent,
   UserPreferences,
   LeaderboardEntry,
@@ -64,6 +68,7 @@ export default function App() {
   const [obstacleSettings, setObstacleSettings] = useState<ObstacleSettings>(loadObstacleSettings);
   const [skins, setSkins] = useState<CharacterSkin[]>(loadSkins);
   const [quests, setQuests] = useState<DailyQuest[]>(loadQuests);
+  const [weeklyMissions, setWeeklyMissions] = useState<WeeklyMission[]>(loadWeeklyMissions);
   const [season, setSeason] = useState<SeasonalEvent>(INITIAL_SEASON);
   const [preferences, setPreferences] = useState<UserPreferences>(loadPreferences);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(getLeaderboard);
@@ -216,6 +221,50 @@ export default function App() {
 
         saveQuests(updatedQuests);
         return updatedQuests;
+      });
+
+      // Update weekly missions progress (harder, long-term goals)
+      setWeeklyMissions((prevMissions) => {
+        const updatedMissions = prevMissions.map((m) => {
+          if (m.claimed) return m;
+
+          let newCount = m.currentCount;
+          if (m.type === 'CUMULATIVE_PIPES') {
+            newCount = m.currentCount + score;
+          } else if (m.type === 'COLLECT_FEATHERS') {
+            newCount = m.currentCount + feathersEarned;
+          } else if (m.type === 'HIGH_SCORE_SINGLE') {
+            newCount = Math.max(m.currentCount, score);
+          } else if (m.type === 'TOTAL_GAMES') {
+            newCount = m.currentCount + 1;
+          } else if (m.type === 'THEMED_PIPES' && obstacleSettings.theme === m.themeReq) {
+            newCount = m.currentCount + score;
+          }
+
+          const isCompleted = newCount >= m.targetCount;
+          if (isCompleted && !m.completed) {
+            soundFx.playFanfare();
+            triggerPushNotification(
+              `Weekly Mission Accomplished: ${m.title}! 🏆`,
+              `Exclusive Legendary Badge '${m.rewardBadge.name}' ready to claim in Operations!`,
+              'achievement',
+              preferences
+            );
+          }
+
+          return {
+            ...m,
+            currentCount: newCount,
+            completed: isCompleted,
+            rewardBadge: {
+              ...m.rewardBadge,
+              unlocked: isCompleted || m.rewardBadge.unlocked
+            }
+          };
+        });
+
+        saveWeeklyMissions(updatedMissions);
+        return updatedMissions;
       });
 
       // Update Leaderboard if online or queue offline
@@ -399,6 +448,80 @@ export default function App() {
     });
   };
 
+  // Claim Weekly Mission Reward (Feathers, XP, and Exclusive Legendary Badge)
+  const handleClaimWeeklyMission = (missionId: string) => {
+    setWeeklyMissions((prev) => {
+      const mission = prev.find((m) => m.id === missionId);
+      if (!mission || mission.claimed || !mission.completed) return prev;
+
+      soundFx.playFanfare();
+      try {
+        confetti({ particleCount: 90, spread: 70, origin: { y: 0.45 } });
+      } catch {
+        // fallback
+      }
+
+      setProfile((p) => {
+        const currentBadges = p.unlockedBadges || [];
+        const hasBadge = currentBadges.includes(mission.rewardBadge.id);
+        const nextBadges = hasBadge ? currentBadges : [...currentBadges, mission.rewardBadge.id];
+        const nextEquipped = p.equippedBadgeId || mission.rewardBadge.id;
+
+        const updated: PlayerProfile = {
+          ...p,
+          starFeathers: p.starFeathers + mission.rewardFeathers,
+          xp: p.xp + mission.rewardXP,
+          unlockedBadges: nextBadges,
+          equippedBadgeId: nextEquipped
+        };
+        saveProfile(updated);
+        return updated;
+      });
+
+      triggerPushNotification(
+        `Legendary Badge Unlocked: ${mission.rewardBadge.name}! 👑`,
+        `+${mission.rewardFeathers} Star Feathers & Legendary Badge unlocked in your Trophy Hall!`,
+        'achievement',
+        preferences
+      );
+
+      const updated = prev.map((m) =>
+        m.id === missionId
+          ? {
+              ...m,
+              claimed: true,
+              rewardBadge: {
+                ...m.rewardBadge,
+                unlocked: true,
+                unlockedAt: new Date().toISOString()
+              }
+            }
+          : m
+      );
+      saveWeeklyMissions(updated);
+      return updated;
+    });
+  };
+
+  // Equip a Legendary Badge on the pilot's profile
+  const handleEquipBadge = (badgeId: string) => {
+    soundFx.playClick();
+    setProfile((prev) => {
+      const updated: PlayerProfile = {
+        ...prev,
+        equippedBadgeId: badgeId
+      };
+      saveProfile(updated);
+      return updated;
+    });
+    triggerPushNotification(
+      'Profile Badge Updated! ⚜️',
+      'Your active pilot title and emblem have been refreshed.',
+      'daily',
+      preferences
+    );
+  };
+
   // Open Score Sharing modal
   const handleOpenShareModal = (score: number, feathers: number) => {
     setShareRunData({ score, feathers });
@@ -430,6 +553,10 @@ export default function App() {
       if (payload.quests) {
         setQuests(payload.quests);
         saveQuests(payload.quests);
+      }
+      if (payload.weeklyMissions) {
+        setWeeklyMissions(payload.weeklyMissions);
+        saveWeeklyMissions(payload.weeklyMissions);
       }
       if (payload.preferences) {
         setPreferences(payload.preferences);
@@ -518,10 +645,13 @@ export default function App() {
       {activeModal === 'quests' && (
         <QuestsModal
           quests={quests}
+          weeklyMissions={weeklyMissions}
           season={season}
           profile={profile}
           onClaimQuest={handleClaimQuest}
+          onClaimWeeklyMission={handleClaimWeeklyMission}
           onClaimStreak={handleClaimStreak}
+          onEquipBadge={handleEquipBadge}
           onClose={() => setActiveModal(null)}
         />
       )}

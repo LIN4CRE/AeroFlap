@@ -18,6 +18,7 @@ import {
   Shield
 } from 'lucide-react';
 import { LeaderboardEntry, PlayerProfile, CommunityChallenge } from '../types/game';
+import { ALL_LEGENDARY_BADGES } from '../data/quests';
 
 interface LeaderboardProps {
   entries: LeaderboardEntry[];
@@ -213,6 +214,20 @@ export const LeaderboardModal: React.FC<LeaderboardProps> = ({
                           <span className="text-[10px] bg-sky-500/20 text-sky-300 font-semibold px-1.5 py-0.2 rounded">
                             YOU
                           </span>
+                        )}
+                        {isMe && profile.equippedBadgeId && (
+                          (() => {
+                            const badge = ALL_LEGENDARY_BADGES.find((b) => b.id === profile.equippedBadgeId);
+                            return badge ? (
+                              <span
+                                className="text-[10px] bg-amber-500/20 text-amber-300 font-bold px-1.5 py-0.2 rounded border border-amber-500/30 flex items-center gap-1"
+                                title={`Legendary Badge: ${badge.name}`}
+                              >
+                                <span>{badge.icon}</span>
+                                <span className="hidden sm:inline">{badge.name}</span>
+                              </span>
+                            ) : null;
+                          })()
                         )}
                         {item.isFriend && !isMe && (
                           <span className="text-[10px] bg-emerald-500/20 text-emerald-300 font-semibold px-1.5 py-0.2 rounded">

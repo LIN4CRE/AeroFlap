@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Shield, Fingerprint, Check, AlertCircle, X, Key, UserCheck } from 'lucide-react';
+import { Shield, Fingerprint, Check, AlertCircle, X, Key, UserCheck, Award } from 'lucide-react';
 import { PlayerProfile } from '../types/game';
+import { ALL_LEGENDARY_BADGES } from '../data/quests';
 import { registerBiometrics, verifyBiometrics } from '../utils/biometric';
 import { soundFx } from '../utils/audio';
 
@@ -17,6 +18,10 @@ export const AuthModal: React.FC<AuthModalProps> = ({
 }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const [statusMsg, setStatusMsg] = useState<{ text: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const equippedBadge = profile.equippedBadgeId
+    ? ALL_LEGENDARY_BADGES.find((b) => b.id === profile.equippedBadgeId)
+    : null;
 
   const handleOAuthLogin = async (provider: 'google' | 'apple') => {
     setLoading(true);
@@ -100,13 +105,32 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               <UserCheck className="w-5 h-5" />
             </div>
             <div>
-              <span className="font-semibold text-sm text-slate-100 block">
-                {profile.username}
-              </span>
-              <div className="flex items-center gap-2 text-[11px] text-slate-400">
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-sm text-slate-100 block">
+                  {profile.username}
+                </span>
+                {equippedBadge && (
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30 font-bold flex items-center gap-1"
+                    title={`Equipped Badge: ${equippedBadge.name}`}
+                  >
+                    <span>{equippedBadge.icon}</span>
+                    <span className="text-[10px] hidden sm:inline">{equippedBadge.name}</span>
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
                 <span className="capitalize">{profile.authProvider} Account</span>
                 <span aria-hidden="true">·</span>
                 <span>Level {profile.level}</span>
+                {profile.unlockedBadges && profile.unlockedBadges.length > 0 && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <span className="text-amber-400 font-semibold">
+                      {profile.unlockedBadges.length} Legendary {profile.unlockedBadges.length === 1 ? 'Badge' : 'Badges'}
+                    </span>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -62,6 +62,44 @@ export interface CharacterSkin {
   unlockedAt?: string;
 }
 
+export interface LegendaryBadge {
+  id: string;
+  name: string;
+  tagline: string;
+  description: string;
+  tier: 'Legendary';
+  icon: string;
+  glowColor: string;
+  accentBorder: string;
+  unlocked: boolean;
+  unlockedAt?: string;
+  prestigePoints: number;
+}
+
+export type WeeklyMissionType =
+  | 'CUMULATIVE_PIPES'
+  | 'COLLECT_FEATHERS'
+  | 'HIGH_SCORE_SINGLE'
+  | 'TOTAL_GAMES'
+  | 'THEMED_PIPES';
+
+export interface WeeklyMission {
+  id: string;
+  title: string;
+  subtitle: string;
+  description: string;
+  targetCount: number;
+  currentCount: number;
+  rewardFeathers: number;
+  rewardXP: number;
+  rewardBadge: LegendaryBadge;
+  completed: boolean;
+  claimed: boolean;
+  type: WeeklyMissionType;
+  themeReq?: ObstacleTheme;
+  difficulty: 'Hard' | 'Extreme' | 'Master';
+}
+
 export interface PlayerProfile {
   id: string;
   username: string;
@@ -79,6 +117,8 @@ export interface PlayerProfile {
   lastLoginDate: string;
   streakDays: number;
   lastStreakClaimDate: string;
+  unlockedBadges?: string[];
+  equippedBadgeId?: string;
 }
 
 export interface LeaderboardEntry {
@@ -182,6 +222,7 @@ export interface CloudSavePayload {
   obstacleSettings: ObstacleSettings;
   unlockedSkins: SkinId[];
   quests: DailyQuest[];
+  weeklyMissions?: WeeklyMission[];
   preferences: UserPreferences;
   checksum: string;
 }

@@ -8,6 +8,8 @@ import {
   SkyTheme,
   CharacterSkin,
   DailyQuest,
+  WeeklyMission,
+  LegendaryBadge,
   UserPreferences,
   CloudSavePayload,
   LeaderboardEntry,
@@ -15,12 +17,13 @@ import {
   CommunityChallenge
 } from '../types/game';
 import { INITIAL_SKINS } from '../data/skins';
-import { INITIAL_QUESTS } from '../data/quests';
+import { INITIAL_QUESTS, INITIAL_WEEKLY_MISSIONS, ALL_LEGENDARY_BADGES } from '../data/quests';
 
 const STORAGE_KEY_PROFILE = 'aeroflap_profile_v2';
 const STORAGE_KEY_OBSTACLES = 'aeroflap_obstacles_v2';
 const STORAGE_KEY_SKINS = 'aeroflap_skins_v2';
 const STORAGE_KEY_QUESTS = 'aeroflap_quests_v2';
+const STORAGE_KEY_WEEKLY_MISSIONS = 'aeroflap_weekly_missions_v2';
 const STORAGE_KEY_PREFS = 'aeroflap_prefs_v2';
 const STORAGE_KEY_OFFLINE_QUEUE = 'aeroflap_offline_queue_v2';
 const STORAGE_KEY_LEADERBOARD = 'aeroflap_leaderboard_cache_v2';
@@ -89,14 +92,22 @@ export const DEFAULT_PROFILE: PlayerProfile = {
   totalFeathersCollected: 0,
   lastLoginDate: new Date().toISOString(),
   streakDays: 1,
-  lastStreakClaimDate: ''
+  lastStreakClaimDate: '',
+  unlockedBadges: [],
+  equippedBadgeId: undefined
 };
 
 export function loadProfile(): PlayerProfile {
   try {
     const raw = localStorage.getItem(STORAGE_KEY_PROFILE);
     if (raw) {
-      return { ...DEFAULT_PROFILE, ...JSON.parse(raw) };
+      const parsed = JSON.parse(raw);
+      return {
+        ...DEFAULT_PROFILE,
+        ...parsed,
+        unlockedBadges: Array.isArray(parsed.unlockedBadges) ? parsed.unlockedBadges : [],
+        equippedBadgeId: parsed.equippedBadgeId || undefined
+      };
     }
   } catch (e) {
     console.error('Error loading profile', e);
@@ -175,6 +186,50 @@ export function saveQuests(quests: DailyQuest[]): void {
   } catch (e) {
     console.error('Error saving quests', e);
   }
+}
+
+export function loadWeeklyMissions(): WeeklyMission[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_WEEKLY_MISSIONS);
+    if (raw) {
+      const saved: WeeklyMission[] = JSON.parse(raw);
+      // Merge with initial missions to guarantee up-to-date fields and badges
+      return INITIAL_WEEKLY_MISSIONS.map((init) => {
+        const found = saved.find((m) => m.id === init.id);
+        if (found) {
+          return {
+            ...init,
+            ...found,
+            rewardBadge: {
+              ...init.rewardBadge,
+              unlocked: found.completed || found.claimed || init.rewardBadge.unlocked
+            }
+          };
+        }
+        return init;
+      });
+    }
+  } catch (e) {
+    console.error('Error loading weekly missions', e);
+  }
+  return INITIAL_WEEKLY_MISSIONS;
+}
+
+export function saveWeeklyMissions(missions: WeeklyMission[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_WEEKLY_MISSIONS, JSON.stringify(missions));
+  } catch (e) {
+    console.error('Error saving weekly missions', e);
+  }
+}
+
+export function getAllLegendaryBadges(profile?: PlayerProfile): LegendaryBadge[] {
+  const unlockedIds = profile?.unlockedBadges || [];
+  return ALL_LEGENDARY_BADGES.map((b) => ({
+    ...b,
+    unlocked: unlockedIds.includes(b.id),
+    unlockedAt: unlockedIds.includes(b.id) ? b.unlockedAt || 'Earned via Weekly Missions' : undefined
+  }));
 }
 
 export function loadPreferences(): UserPreferences {
@@ -438,7 +493,8 @@ export async function createEncryptedBackup(
   skins: CharacterSkin[],
   quests: DailyQuest[],
   preferences: UserPreferences,
-  passphrase?: string
+  passphrase?: string,
+  weeklyMissions?: WeeklyMission[]
 ): Promise<string> {
   const payload: CloudSavePayload = {
     version: 2,
@@ -447,6 +503,7 @@ export async function createEncryptedBackup(
     obstacleSettings,
     unlockedSkins: skins.filter((s) => s.unlocked).map((s) => s.id),
     quests,
+    weeklyMissions: weeklyMissions || loadWeeklyMissions(),
     preferences,
     checksum: 'crc_' + Math.random().toString(36).substring(2, 10)
   };

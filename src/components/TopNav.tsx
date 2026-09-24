@@ -1,6 +1,7 @@
 import React from 'react';
 import { Sliders, Sparkles, Trophy, Target, Bell, Settings, Shield, WifiOff } from 'lucide-react';
 import { PlayerProfile } from '../types/game';
+import { ALL_LEGENDARY_BADGES } from '../data/quests';
 
 interface TopNavProps {
   profile: PlayerProfile;
@@ -27,6 +28,10 @@ export const TopNav: React.FC<TopNavProps> = ({
   onOpenNotifications,
   onOpenAuth
 }) => {
+  const equippedBadge = profile.equippedBadgeId
+    ? ALL_LEGENDARY_BADGES.find((b) => b.id === profile.equippedBadgeId)
+    : null;
+
   return (
     <header className="w-full bg-slate-900/80 backdrop-blur-md border-b border-slate-800 shrink-0 z-30">
       <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
@@ -104,11 +109,23 @@ export const TopNav: React.FC<TopNavProps> = ({
           {/* Profile / Pilot ID Capsule */}
           <button
             onClick={onOpenAuth}
-            className="flex items-center gap-2 py-1.5 px-3 bg-slate-800 hover:bg-slate-700/80 text-white rounded-xl border border-slate-700 text-xs font-semibold transition-all cursor-pointer"
+            className={`flex items-center gap-2 py-1.5 px-3 rounded-xl border text-xs font-semibold transition-all cursor-pointer ${
+              equippedBadge
+                ? 'bg-amber-950/40 hover:bg-amber-900/50 text-white border-amber-500/40 shadow-sm shadow-amber-500/10'
+                : 'bg-slate-800 hover:bg-slate-700/80 text-white border-slate-700'
+            }`}
           >
-            <Shield className="w-3.5 h-3.5 text-sky-400" />
+            {equippedBadge ? (
+              <span className="text-sm select-none" title={`Equipped Legendary Badge: ${equippedBadge.name}`}>
+                {equippedBadge.icon}
+              </span>
+            ) : (
+              <Shield className="w-3.5 h-3.5 text-sky-400" />
+            )}
             <span className="truncate max-w-[90px]">{profile.username}</span>
-            <span className="text-[10px] text-sky-400 font-mono-nums">Lv.{profile.level}</span>
+            <span className={`text-[10px] font-mono-nums ${equippedBadge ? 'text-amber-400' : 'text-sky-400'}`}>
+              Lv.{profile.level}
+            </span>
           </button>
         </div>
       </div>
