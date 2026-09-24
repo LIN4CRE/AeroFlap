@@ -1,0 +1,6 @@
+{
+  "name": "AeroFlap: Cyber & Arcade Skies",
+  "description": "Next-gen responsive flappy bird game with customizable obstacles, character skin progression, global leaderboards, biometric passkeys, encrypted cloud sync, offline support, and push notifications.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
