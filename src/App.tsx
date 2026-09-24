@@ -20,6 +20,10 @@ import {
   submitLeaderboardScore,
   enqueueOfflineScore,
   flushOfflineQueue,
+  loadCommunityChallenge,
+  contributePipesToCommunity,
+  claimCommunityMilestone,
+  claimCommunityGrandReward,
   DEFAULT_OBSTACLE_SETTINGS,
   DEFAULT_PREFERENCES
 } from './utils/storage';
@@ -38,7 +42,8 @@ import {
   LeaderboardEntry,
   AppNotification,
   SkinId,
-  CloudSavePayload
+  CloudSavePayload,
+  CommunityChallenge
 } from './types/game';
 
 import { TopNav } from './components/TopNav';
@@ -62,6 +67,7 @@ export default function App() {
   const [season, setSeason] = useState<SeasonalEvent>(INITIAL_SEASON);
   const [preferences, setPreferences] = useState<UserPreferences>(loadPreferences);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>(getLeaderboard);
+  const [communityChallenge, setCommunityChallenge] = useState<CommunityChallenge>(loadCommunityChallenge);
   const [notifications, setNotifications] = useState<AppNotification[]>(loadNotifications);
   const [isOnline, setIsOnline] = useState<boolean>(
     typeof navigator !== 'undefined' ? navigator.onLine : true
@@ -219,9 +225,81 @@ export default function App() {
       } else {
         enqueueOfflineScore(score, feathersEarned);
       }
+
+      // Contribute cleared pipes to Global Community Challenge
+      if (score > 0) {
+        const updatedChal = contributePipesToCommunity(score);
+        setCommunityChallenge(updatedChal);
+
+        if (updatedChal.completed && !communityChallenge.completed) {
+          soundFx.playFanfare();
+          triggerPushNotification(
+            'Global Community Challenge Victory! 👑',
+            'Pilots worldwide have conquered 500,000 pipes! Claim your Zenith Champion Pack in the Leaderboard.',
+            'season',
+            preferences
+          );
+        }
+      }
     },
-    [profile, obstacleSettings.theme, isOnline, preferences]
+    [profile, obstacleSettings.theme, isOnline, preferences, communityChallenge.completed]
   );
+
+  // Claim Global Community Challenge Milestone
+  const handleClaimCommunityMilestone = (milestoneIndex: number) => {
+    const res = claimCommunityMilestone(milestoneIndex);
+    if (res.rewardFeathers > 0) {
+      soundFx.playFanfare();
+      try {
+        confetti({ particleCount: 60, spread: 60, origin: { y: 0.5 } });
+      } catch {
+        // fallback
+      }
+      setCommunityChallenge(res.updated);
+      setProfile((prev) => {
+        const updated = {
+          ...prev,
+          starFeathers: prev.starFeathers + res.rewardFeathers
+        };
+        saveProfile(updated);
+        return updated;
+      });
+      triggerPushNotification(
+        'Community Milestone Claimed! 🌟',
+        `+${res.rewardFeathers} Star Feathers added to your account!`,
+        'achievement',
+        preferences
+      );
+    }
+  };
+
+  // Claim Grand Community-Wide Reward
+  const handleClaimCommunityReward = () => {
+    const res = claimCommunityGrandReward();
+    if (res.rewardFeathers > 0) {
+      soundFx.playFanfare();
+      try {
+        confetti({ particleCount: 100, spread: 80, origin: { y: 0.4 } });
+      } catch {
+        // fallback
+      }
+      setCommunityChallenge(res.updated);
+      setProfile((prev) => {
+        const updated = {
+          ...prev,
+          starFeathers: prev.starFeathers + res.rewardFeathers
+        };
+        saveProfile(updated);
+        return updated;
+      });
+      triggerPushNotification(
+        'Zenith Champion Pack Claimed! 👑',
+        `+${res.rewardFeathers} Star Feathers & Community Champion Wings unlocked!`,
+        'achievement',
+        preferences
+      );
+    }
+  };
 
   // Equip a character skin
   const handleEquipSkin = (skinId: SkinId) => {
@@ -287,17 +365,36 @@ export default function App() {
     });
   };
 
-  // Claim Daily Login Streak
+  // Claim Daily Login Streak with 7-Day Matrix Rewards
   const handleClaimStreak = () => {
     soundFx.playFanfare();
+    try {
+      confetti({ particleCount: 70, spread: 60, origin: { y: 0.5 } });
+    } catch {
+      // fallback
+    }
+
     setProfile((prev) => {
+      const currentStreak = Math.max(1, prev.streakDays);
+      const cycleDay = ((currentStreak - 1) % 7) + 1;
+      const rewards = [50, 75, 120, 150, 200, 250, 500];
+      const earnedFeathers = rewards[cycleDay - 1] || 50;
+
       const updated: PlayerProfile = {
         ...prev,
         streakDays: prev.streakDays + 1,
-        starFeathers: prev.starFeathers + 50,
+        starFeathers: prev.starFeathers + earnedFeathers,
         lastStreakClaimDate: new Date().toISOString()
       };
       saveProfile(updated);
+
+      triggerPushNotification(
+        `Day ${cycleDay} Streak Check-In! 🔥`,
+        `+${earnedFeathers} Star Feathers added to your account. Keep the streak going!`,
+        'daily',
+        preferences
+      );
+
       return updated;
     });
   };
@@ -411,6 +508,9 @@ export default function App() {
         <LeaderboardModal
           entries={leaderboard}
           profile={profile}
+          communityChallenge={communityChallenge}
+          onClaimMilestone={handleClaimCommunityMilestone}
+          onClaimCommunityReward={handleClaimCommunityReward}
           onClose={() => setActiveModal(null)}
         />
       )}

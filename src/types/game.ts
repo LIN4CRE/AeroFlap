@@ -13,6 +13,14 @@ export type ObstacleTheme =
   | 'CANDY_CANES'
   | 'DARK_NEBULA';
 
+export type SkyTheme =
+  | 'CYBER_NEON'
+  | 'SUNSET_HORIZON'
+  | 'ARCTIC_STORM'
+  | 'DARK_NEBULA'
+  | 'DAYLIGHT_AZURE'
+  | 'RETRO_AMBER';
+
 export type GapSize = 'EASY' | 'NORMAL' | 'HARD' | 'CHAOS_DYNAMIC';
 export type ObstacleSpeed = 'CHILL' | 'STANDARD' | 'HYPER' | 'PROGRESSIVE';
 export type ObstaclePattern = 'STATIC' | 'VERTICAL_BOB' | 'ROTATING_PULSE';
@@ -20,6 +28,7 @@ export type ObstacleSpacing = 'WIDE' | 'NORMAL' | 'TIGHT';
 
 export interface ObstacleSettings {
   theme: ObstacleTheme;
+  skyTheme: SkyTheme;
   gapSize: GapSize;
   speed: ObstacleSpeed;
   pattern: ObstaclePattern;
@@ -110,6 +119,30 @@ export interface SeasonalEvent {
   tierXP: number;
   tierMaxXP: number;
   exclusiveSkinId: SkinId;
+}
+
+export interface CommunityMilestone {
+  threshold: number;
+  label: string;
+  rewardFeathers: number;
+  unlocked: boolean;
+  claimed: boolean;
+}
+
+export interface CommunityChallenge {
+  id: string;
+  name: string;
+  operationCode: string;
+  description: string;
+  targetPipes: number;
+  currentPipes: number;
+  endsInDays: number;
+  playerContribution: number;
+  rewardTitle: string;
+  rewardDescription: string;
+  milestones: CommunityMilestone[];
+  completed: boolean;
+  communityRewardClaimed: boolean;
 }
 
 export type AppTheme = 'dark_cyber' | 'daylight' | 'sunset' | 'retro_amber';

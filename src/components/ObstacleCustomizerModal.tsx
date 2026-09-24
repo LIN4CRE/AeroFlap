@@ -1,12 +1,84 @@
 import React from 'react';
-import { X, Sparkles, Zap, Sliders, ShieldAlert, Check } from 'lucide-react';
-import { ObstacleSettings, ObstacleTheme, GapSize, ObstacleSpeed, ObstaclePattern, ObstacleSpacing } from '../types/game';
+import { X, Sparkles, Zap, Sliders, ShieldAlert, Check, CloudSun, Sunset, Snowflake, Orbit, SunMedium, Monitor } from 'lucide-react';
+import { ObstacleSettings, ObstacleTheme, SkyTheme, GapSize, ObstacleSpeed, ObstaclePattern, ObstacleSpacing } from '../types/game';
 
 interface CustomizerProps {
   settings: ObstacleSettings;
   onSave: (newSettings: ObstacleSettings) => void;
   onClose: () => void;
 }
+
+const SKY_THEME_OPTIONS: Array<{
+  id: SkyTheme;
+  name: string;
+  desc: string;
+  obstacleEffect: string;
+  badge: string;
+  gradient: string;
+  accent: string;
+  icon: string;
+}> = [
+  {
+    id: 'CYBER_NEON',
+    name: 'Cyber Neon',
+    desc: 'Midnight synthwave sky with glowing cyber gridlines and futuristic skyline silhouettes.',
+    obstacleEffect: 'Obstacles glow with neon cyan beams and magenta nodes',
+    badge: 'Popular',
+    gradient: 'from-[#040714] via-[#0c1733] to-[#1e1b4b]',
+    accent: '#06b6d4',
+    icon: '🌆'
+  },
+  {
+    id: 'SUNSET_HORIZON',
+    name: 'Sunset Horizon',
+    desc: 'Radiant purple-to-gold dusk with a glowing solar corona and warm twilight clouds.',
+    obstacleEffect: 'Obstacles shift to warm bronze metal, gold amber & solar orange',
+    badge: 'Warm',
+    gradient: 'from-[#311042] via-[#831843] to-[#fde047]',
+    accent: '#ea580c',
+    icon: '🌅'
+  },
+  {
+    id: 'ARCTIC_STORM',
+    name: 'Arctic Storm',
+    desc: 'Sub-zero glacial blizzard with drifting snowflakes, frost sheen, and frozen peaks.',
+    obstacleEffect: 'Obstacles freeze into glacial cyan ice, frost steel & ice glints',
+    badge: 'Glacial',
+    gradient: 'from-[#082f49] via-[#0284c7] to-[#bae6fd]',
+    accent: '#38bdf8',
+    icon: '❄️'
+  },
+  {
+    id: 'DARK_NEBULA',
+    name: 'Dark Nebula',
+    desc: 'Cosmic galactic void filled with interstellar stardust, purple auroras, and supernovas.',
+    obstacleEffect: 'Obstacles shift to obsidian shadow pylons with violet runes',
+    badge: 'Cosmic',
+    gradient: 'from-[#020617] via-[#3b0764] to-[#581c87]',
+    accent: '#c084fc',
+    icon: '🌌'
+  },
+  {
+    id: 'DAYLIGHT_AZURE',
+    name: 'Daylight Azure',
+    desc: 'Crisp bright azure midday skies with sunny horizons and soft drifting clouds.',
+    obstacleEffect: 'Obstacles feature vibrant retro emerald green and classic pipes',
+    badge: 'Daylight',
+    gradient: 'from-[#0284c7] via-[#38bdf8] to-[#e0f2fe]',
+    accent: '#0284c7',
+    icon: '☀️'
+  },
+  {
+    id: 'RETRO_AMBER',
+    name: 'Retro Amber CRT',
+    desc: '1984 amber phosphor arcade monitor with CRT scanlines and perspective vector lines.',
+    obstacleEffect: 'Obstacles transform into glowing amber phosphor wireframes',
+    badge: 'Vintage',
+    gradient: 'from-[#0f0b04] via-[#78350f] to-[#fbbf24]',
+    accent: '#f59e0b',
+    icon: '📟'
+  }
+];
 
 const THEME_OPTIONS: Array<{
   id: ObstacleTheme;
@@ -105,7 +177,53 @@ export const ObstacleCustomizerModal: React.FC<CustomizerProps> = ({
 
         {/* Scrollable Configuration Body */}
         <div className="flex-1 overflow-y-auto py-5 space-y-6 pr-1">
-          {/* Section 1: Themes */}
+          {/* Section 1: Sky Environment & Atmosphere */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">
+                Sky Atmosphere & Canvas Horizon
+              </label>
+              <span className="text-[11px] text-sky-400 font-medium">Alters background & obstacle colors</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {SKY_THEME_OPTIONS.map((sky) => {
+                const active = (current.skyTheme || 'CYBER_NEON') === sky.id;
+                return (
+                  <button
+                    key={sky.id}
+                    onClick={() => setCurrent({ ...current, skyTheme: sky.id })}
+                    className={`flex items-start gap-3 p-3 rounded-2xl text-left transition-all border ${
+                      active
+                        ? 'bg-slate-800 border-sky-500 shadow-md ring-1 ring-sky-500/40'
+                        : 'bg-slate-800/40 border-slate-800 hover:bg-slate-800/70 hover:border-slate-700'
+                    }`}
+                  >
+                    <div className={`w-10 h-10 rounded-xl shrink-0 flex items-center justify-center text-lg bg-gradient-to-br ${sky.gradient} border border-white/10 shadow-inner`}>
+                      {sky.icon}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-semibold text-sm text-slate-100 truncate">{sky.name}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded font-medium bg-slate-700/60 text-slate-300">
+                            {sky.badge}
+                          </span>
+                        </div>
+                        {active && <Check className="w-4 h-4 text-sky-400 shrink-0" />}
+                      </div>
+                      <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{sky.desc}</p>
+                      <div className="mt-1.5 flex items-center gap-1.5 text-[10px] text-sky-400/90 font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: sky.accent }} />
+                        <span className="truncate">{sky.obstacleEffect}</span>
+                      </div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Section 2: Themes */}
           <div>
             <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-3">
               Obstacle Architecture Style

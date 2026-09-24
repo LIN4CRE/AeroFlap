@@ -2,7 +2,7 @@
  * HTML5 Canvas 60fps Game Renderer
  * High-performance, theme-reactive rendering for obstacles, skins, and effects
  */
-import { AppTheme, ObstacleSettings, SkinId } from '../types/game';
+import { AppTheme, ObstacleSettings, SkyTheme, SkinId } from '../types/game';
 import { PhysicsEngine, PipePair, StarFeatherItem, Particle } from './physics';
 
 export class GameRenderer {
@@ -32,16 +32,23 @@ export class GameRenderer {
     const ctx = this.ctx;
     ctx.clearRect(0, 0, this.width, this.height);
 
+    // Resolve sky theme from obstacle settings with fallback to app theme
+    const activeSky: SkyTheme = settings.skyTheme || (
+      theme === 'dark_cyber' ? 'CYBER_NEON' :
+      theme === 'sunset' ? 'SUNSET_HORIZON' :
+      theme === 'retro_amber' ? 'RETRO_AMBER' : 'DAYLIGHT_AZURE'
+    );
+
     // Scroll offsets
     this.bgOffset = (this.bgOffset + 0.4) % this.width;
     this.groundOffset = (this.groundOffset + 2.2) % 40;
 
-    // 1. Draw Background
-    this.drawBackground(theme, highContrast);
+    // 1. Draw Sky Background
+    this.drawBackground(activeSky, highContrast);
 
-    // 2. Draw Obstacles
+    // 2. Draw Obstacles (with sky-reactive colors and themes)
     for (const pipe of physics.pipes) {
-      this.drawObstacle(pipe, settings, highContrast);
+      this.drawObstacle(pipe, settings, activeSky, highContrast);
     }
 
     // 3. Draw Collectibles (Star Feathers)
@@ -53,13 +60,13 @@ export class GameRenderer {
     this.drawParticles(physics.particles);
 
     // 5. Draw Ground
-    this.drawGround(theme, physics.groundY, highContrast);
+    this.drawGround(activeSky, physics.groundY, highContrast);
 
     // 6. Draw Player Character Skin
     this.drawBird(physics.bird, highContrast);
   }
 
-  private drawBackground(theme: AppTheme, highContrast: boolean) {
+  private drawBackground(sky: SkyTheme, highContrast: boolean) {
     const ctx = this.ctx;
     const w = this.width;
     const h = this.height;
@@ -70,7 +77,7 @@ export class GameRenderer {
       return;
     }
 
-    if (theme === 'dark_cyber') {
+    if (sky === 'CYBER_NEON') {
       // Midnight Cyber Sky
       const grad = ctx.createLinearGradient(0, 0, 0, h);
       grad.addColorStop(0, '#040714');
@@ -103,7 +110,51 @@ export class GameRenderer {
         }
         ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
       }
-    } else if (theme === 'sunset') {
+    } else if (sky === 'ARCTIC_STORM') {
+      // Glacial Blizzard & Frozen Peaks
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#031726');
+      grad.addColorStop(0.35, '#082f49');
+      grad.addColorStop(0.7, '#0284c7');
+      grad.addColorStop(1, '#bae6fd');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Distant Frozen Mountain Silhouettes
+      ctx.fillStyle = 'rgba(12, 74, 110, 0.45)';
+      for (let i = 0; i < 6; i++) {
+        const mx = ((i * 120 - this.bgOffset * 0.2) % (w + 240)) - 120;
+        const my = h - 70;
+        const mHeight = 110 + (i % 3) * 45;
+        ctx.beginPath();
+        ctx.moveTo(mx - 80, my);
+        ctx.lineTo(mx, my - mHeight);
+        ctx.lineTo(mx + 80, my);
+        ctx.closePath();
+        ctx.fill();
+
+        // Snow-capped peak
+        ctx.fillStyle = 'rgba(240, 249, 255, 0.8)';
+        ctx.beginPath();
+        ctx.moveTo(mx - 25, my - mHeight + 35);
+        ctx.lineTo(mx, my - mHeight);
+        ctx.lineTo(mx + 25, my - mHeight + 35);
+        ctx.closePath();
+        ctx.fill();
+        ctx.fillStyle = 'rgba(12, 74, 110, 0.45)';
+      }
+
+      // Swirling snowflakes & frost particles
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+      for (let s = 0; s < 35; s++) {
+        const fx = (s * 33 + this.bgOffset * 1.6) % w;
+        const fy = (s * 27 + Math.sin(this.bgOffset * 0.05 + s) * 20) % (h - 70);
+        const sz = (s % 3) + 1.2;
+        ctx.beginPath();
+        ctx.arc(fx, fy, sz, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (sky === 'SUNSET_HORIZON') {
       // Sunset Sky
       const grad = ctx.createLinearGradient(0, 0, 0, h);
       grad.addColorStop(0, '#311042');
@@ -126,7 +177,28 @@ export class GameRenderer {
       // Distant clouds
       this.drawCloud(w * 0.2 - this.bgOffset * 0.3, h * 0.32, 60, 'rgba(255, 255, 255, 0.15)');
       this.drawCloud(w * 0.8 - this.bgOffset * 0.3, h * 0.22, 80, 'rgba(255, 255, 255, 0.18)');
-    } else if (theme === 'retro_amber') {
+    } else if (sky === 'DARK_NEBULA') {
+      // Deep Cosmic Nebula Void
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, '#020617');
+      grad.addColorStop(0.4, '#1e1b4b');
+      grad.addColorStop(0.8, '#3b0764');
+      grad.addColorStop(1, '#581c87');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Interstellar Nebula Dust Clouds
+      this.drawCloud(w * 0.3 - this.bgOffset * 0.15, h * 0.25, 90, 'rgba(168, 85, 247, 0.2)');
+      this.drawCloud(w * 0.75 - this.bgOffset * 0.15, h * 0.4, 110, 'rgba(236, 72, 153, 0.18)');
+
+      // Cosmic Stardust Stars
+      ctx.fillStyle = 'rgba(232, 121, 249, 0.75)';
+      for (let i = 0; i < 40; i++) {
+        const sx = ((i * 51 + this.bgOffset * 0.1) % w);
+        const sy = (i * 31) % (h * 0.75);
+        ctx.fillRect(sx, sy, 2, 2);
+      }
+    } else if (sky === 'RETRO_AMBER') {
       // CRT Amber Arcade
       ctx.fillStyle = '#0f0b04';
       ctx.fillRect(0, 0, w, h);
@@ -147,10 +219,10 @@ export class GameRenderer {
         ctx.stroke();
       }
     } else {
-      // Daylight Sky
+      // Daylight Azure Sky
       const grad = ctx.createLinearGradient(0, 0, 0, h);
-      grad.addColorStop(0, '#38bdf8');
-      grad.addColorStop(0.65, '#93c5fd');
+      grad.addColorStop(0, '#0284c7');
+      grad.addColorStop(0.65, '#38bdf8');
       grad.addColorStop(1, '#e0f2fe');
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, w, h);
@@ -175,7 +247,7 @@ export class GameRenderer {
     ctx.restore();
   }
 
-  private drawGround(theme: AppTheme, groundY: number, highContrast: boolean) {
+  private drawGround(sky: SkyTheme, groundY: number, highContrast: boolean) {
     const ctx = this.ctx;
     const w = this.width;
     const h = this.height;
@@ -189,7 +261,7 @@ export class GameRenderer {
       return;
     }
 
-    if (theme === 'dark_cyber') {
+    if (sky === 'CYBER_NEON') {
       // Cyber runway
       ctx.fillStyle = '#090d16';
       ctx.fillRect(0, groundY, w, groundH);
@@ -211,18 +283,57 @@ export class GameRenderer {
         ctx.lineTo(x - 20, h);
         ctx.stroke();
       }
-    } else if (theme === 'sunset') {
+    } else if (sky === 'ARCTIC_STORM') {
+      // Glacial ice sheet ground
+      ctx.fillStyle = '#082f49';
+      ctx.fillRect(0, groundY, w, groundH);
+
+      // Glowing frost surface edge
+      const iceGrad = ctx.createLinearGradient(0, groundY, w, groundY);
+      iceGrad.addColorStop(0, '#38bdf8');
+      iceGrad.addColorStop(0.5, '#f0f9ff');
+      iceGrad.addColorStop(1, '#06b6d4');
+      ctx.fillStyle = iceGrad;
+      ctx.fillRect(0, groundY, w, 5);
+
+      // Ice cracks & crystalline reflection
+      ctx.strokeStyle = 'rgba(224, 242, 254, 0.25)';
+      ctx.lineWidth = 1;
+      for (let x = -this.groundOffset; x < w; x += 35) {
+        ctx.beginPath();
+        ctx.moveTo(x, groundY + 5);
+        ctx.lineTo(x + 15, groundY + 25);
+        ctx.lineTo(x + 5, h);
+        ctx.stroke();
+      }
+    } else if (sky === 'DARK_NEBULA') {
+      // Obsidian void plateau
+      ctx.fillStyle = '#090514';
+      ctx.fillRect(0, groundY, w, groundH);
+      ctx.fillStyle = '#a855f7';
+      ctx.fillRect(0, groundY, w, 4);
+
+      // Purple astral veins
+      ctx.strokeStyle = 'rgba(192, 132, 252, 0.25)';
+      ctx.lineWidth = 1;
+      for (let x = -this.groundOffset; x < w; x += 30) {
+        ctx.beginPath();
+        ctx.moveTo(x, groundY + 4);
+        ctx.lineTo(x - 15, h);
+        ctx.stroke();
+      }
+    } else if (sky === 'SUNSET_HORIZON') {
       ctx.fillStyle = '#1c1917';
       ctx.fillRect(0, groundY, w, groundH);
       ctx.fillStyle = '#ea580c';
       ctx.fillRect(0, groundY, w, 4);
-    } else if (theme === 'retro_amber') {
+    } else if (sky === 'RETRO_AMBER') {
       ctx.fillStyle = '#181206';
       ctx.fillRect(0, groundY, w, groundH);
       ctx.fillStyle = '#f59e0b';
       ctx.fillRect(0, groundY, w, 3);
     } else {
-      // Classic grass
+      // Classic emerald grass
       ctx.fillStyle = '#22c55e';
       ctx.fillRect(0, groundY, w, 14);
       ctx.fillStyle = '#15803d';
@@ -232,7 +343,7 @@ export class GameRenderer {
     }
   }
 
-  private drawObstacle(pipe: PipePair, settings: ObstacleSettings, highContrast: boolean) {
+  private drawObstacle(pipe: PipePair, settings: ObstacleSettings, sky: SkyTheme, highContrast: boolean) {
     const ctx = this.ctx;
     const { x, width, topHeight, bottomY, bottomHeight } = pipe;
     const theme = settings.theme;
@@ -250,31 +361,31 @@ export class GameRenderer {
 
     switch (theme) {
       case 'CYBER_LASER':
-        this.drawCyberLaserObstacle(x, width, topHeight, bottomY, bottomHeight, settings.glowEffect);
+        this.drawCyberLaserObstacle(x, width, topHeight, bottomY, bottomHeight, settings.glowEffect, sky);
         break;
       case 'STEAMPUNK_SPIRES':
-        this.drawSteampunkObstacle(x, width, topHeight, bottomY, bottomHeight);
+        this.drawSteampunkObstacle(x, width, topHeight, bottomY, bottomHeight, sky);
         break;
       case 'PIXEL_BRICKS':
-        this.drawPixelBrickObstacle(x, width, topHeight, bottomY, bottomHeight);
+        this.drawPixelBrickObstacle(x, width, topHeight, bottomY, bottomHeight, sky);
         break;
       case 'CRYSTAL_SHARDS':
-        this.drawCrystalObstacle(x, width, topHeight, bottomY, bottomHeight, settings.glowEffect);
+        this.drawCrystalObstacle(x, width, topHeight, bottomY, bottomHeight, settings.glowEffect, sky);
         break;
       case 'CANDY_CANES':
-        this.drawCandyObstacle(x, width, topHeight, bottomY, bottomHeight);
+        this.drawCandyObstacle(x, width, topHeight, bottomY, bottomHeight, sky);
         break;
       case 'DARK_NEBULA':
-        this.drawNebulaObstacle(x, width, topHeight, bottomY, bottomHeight);
+        this.drawNebulaObstacle(x, width, topHeight, bottomY, bottomHeight, sky);
         break;
       case 'CLASSIC_PIPES':
       default:
-        this.drawClassicPipe(x, width, topHeight, bottomY, bottomHeight);
+        this.drawClassicPipe(x, width, topHeight, bottomY, bottomHeight, sky);
         break;
     }
   }
 
-  private drawClassicPipe(x: number, w: number, topH: number, botY: number, botH: number) {
+  private drawClassicPipe(x: number, w: number, topH: number, botY: number, botH: number, sky: SkyTheme) {
     const ctx = this.ctx;
     const lipH = 24;
     const lipW = w + 8;
@@ -282,17 +393,50 @@ export class GameRenderer {
 
     const makePipeGrad = (pipeX: number, pipeW: number) => {
       const grad = ctx.createLinearGradient(pipeX, 0, pipeX + pipeW, 0);
-      grad.addColorStop(0, '#15803d');
-      grad.addColorStop(0.25, '#4ade80');
-      grad.addColorStop(0.65, '#22c55e');
-      grad.addColorStop(1, '#14532d');
+      if (sky === 'ARCTIC_STORM') {
+        // Frost Glacier Pipe
+        grad.addColorStop(0, '#0c4a6e');
+        grad.addColorStop(0.25, '#38bdf8');
+        grad.addColorStop(0.65, '#0284c7');
+        grad.addColorStop(1, '#082f49');
+      } else if (sky === 'SUNSET_HORIZON') {
+        // Sunset Bronze Pipe
+        grad.addColorStop(0, '#7c2d12');
+        grad.addColorStop(0.25, '#f97316');
+        grad.addColorStop(0.65, '#c2410c');
+        grad.addColorStop(1, '#431407');
+      } else if (sky === 'DARK_NEBULA') {
+        // Dark Void Pipe
+        grad.addColorStop(0, '#3b0764');
+        grad.addColorStop(0.25, '#a855f7');
+        grad.addColorStop(0.65, '#7e22ce');
+        grad.addColorStop(1, '#1e1b4b');
+      } else if (sky === 'CYBER_NEON') {
+        // Cyber Synthwave Pipe
+        grad.addColorStop(0, '#042f2e');
+        grad.addColorStop(0.25, '#06b6d4');
+        grad.addColorStop(0.65, '#0891b2');
+        grad.addColorStop(1, '#083344');
+      } else if (sky === 'RETRO_AMBER') {
+        // Amber Arcade Pipe
+        grad.addColorStop(0, '#78350f');
+        grad.addColorStop(0.25, '#fbbf24');
+        grad.addColorStop(0.65, '#d97706');
+        grad.addColorStop(1, '#451a03');
+      } else {
+        // Emerald Classic Pipe
+        grad.addColorStop(0, '#15803d');
+        grad.addColorStop(0.25, '#4ade80');
+        grad.addColorStop(0.65, '#22c55e');
+        grad.addColorStop(1, '#14532d');
+      }
       return grad;
     };
 
     // Top Pipe Body
     ctx.fillStyle = makePipeGrad(x, w);
     ctx.fillRect(x, 0, w, topH - lipH);
-    ctx.strokeStyle = '#052e16';
+    ctx.strokeStyle = sky === 'ARCTIC_STORM' ? '#bae6fd' : '#052e16';
     ctx.lineWidth = 2;
     ctx.strokeRect(x, -2, w, topH - lipH + 2);
 
@@ -318,14 +462,18 @@ export class GameRenderer {
     topH: number,
     botY: number,
     botH: number,
-    glow: boolean
+    glow: boolean,
+    sky: SkyTheme
   ) {
     const ctx = this.ctx;
     ctx.save();
 
+    const beamColor = sky === 'ARCTIC_STORM' ? '#38bdf8' : sky === 'SUNSET_HORIZON' ? '#fb923c' : sky === 'DARK_NEBULA' ? '#c084fc' : '#06b6d4';
+    const accentNodeColor = sky === 'ARCTIC_STORM' ? '#f0f9ff' : sky === 'SUNSET_HORIZON' ? '#fde047' : sky === 'DARK_NEBULA' ? '#e879f9' : '#ec4899';
+
     if (glow) {
       ctx.shadowBlur = 12;
-      ctx.shadowColor = '#06b6d4';
+      ctx.shadowColor = beamColor;
     }
 
     // Top Tower
@@ -337,24 +485,24 @@ export class GameRenderer {
     ctx.fillRect(x, 0, w, topH);
 
     // Neon edges
-    ctx.strokeStyle = '#06b6d4';
+    ctx.strokeStyle = beamColor;
     ctx.lineWidth = 2.5;
     ctx.strokeRect(x, 0, w, topH);
 
     // Bottom Tower
     ctx.fillStyle = topGrad;
     ctx.fillRect(x, botY, w, botH);
-    ctx.strokeStyle = '#ec4899';
+    ctx.strokeStyle = accentNodeColor;
     ctx.strokeRect(x, botY, w, botH);
 
     // Plasma Emitter Nodes at the gap tips
-    ctx.fillStyle = '#38bdf8';
+    ctx.fillStyle = beamColor;
     ctx.fillRect(x + 4, topH - 10, w - 8, 10);
-    ctx.fillStyle = '#f472b6';
+    ctx.fillStyle = accentNodeColor;
     ctx.fillRect(x + 4, botY, w - 8, 10);
 
     // Energy Laser Guide Beam (thin animated faint beam)
-    ctx.strokeStyle = 'rgba(6, 182, 212, 0.45)';
+    ctx.strokeStyle = beamColor;
     ctx.lineWidth = 2;
     ctx.setLineDash([4, 6]);
     ctx.beginPath();
@@ -366,14 +514,21 @@ export class GameRenderer {
     ctx.restore();
   }
 
-  private drawSteampunkObstacle(x: number, w: number, topH: number, botY: number, botH: number) {
+  private drawSteampunkObstacle(x: number, w: number, topH: number, botY: number, botH: number, sky: SkyTheme) {
     const ctx = this.ctx;
     const makeBrassGrad = (pipeX: number, pipeW: number) => {
       const grad = ctx.createLinearGradient(pipeX, 0, pipeX + pipeW, 0);
-      grad.addColorStop(0, '#78350f');
-      grad.addColorStop(0.3, '#d97706');
-      grad.addColorStop(0.7, '#b45309');
-      grad.addColorStop(1, '#451a03');
+      if (sky === 'ARCTIC_STORM') {
+        grad.addColorStop(0, '#1e293b');
+        grad.addColorStop(0.3, '#94a3b8');
+        grad.addColorStop(0.7, '#64748b');
+        grad.addColorStop(1, '#0f172a');
+      } else {
+        grad.addColorStop(0, '#78350f');
+        grad.addColorStop(0.3, '#d97706');
+        grad.addColorStop(0.7, '#b45309');
+        grad.addColorStop(1, '#451a03');
+      }
       return grad;
     };
 
@@ -390,7 +545,7 @@ export class GameRenderer {
     ctx.strokeRect(x, botY, w, botH);
 
     // Clockwork Gear Accents
-    ctx.fillStyle = '#f59e0b';
+    ctx.fillStyle = sky === 'ARCTIC_STORM' ? '#38bdf8' : '#f59e0b';
     ctx.beginPath();
     ctx.arc(x + w * 0.5, topH - 12, 11, 0, Math.PI * 2);
     ctx.fill();
@@ -402,15 +557,18 @@ export class GameRenderer {
     ctx.stroke();
   }
 
-  private drawPixelBrickObstacle(x: number, w: number, topH: number, botY: number, botH: number) {
+  private drawPixelBrickObstacle(x: number, w: number, topH: number, botY: number, botH: number, sky: SkyTheme) {
     const ctx = this.ctx;
     const brickH = 14;
     const brickW = 20;
 
+    const baseColor = sky === 'ARCTIC_STORM' ? '#0284c7' : sky === 'SUNSET_HORIZON' ? '#ea580c' : '#dc2626';
+    const altColor = sky === 'ARCTIC_STORM' ? '#0369a1' : sky === 'SUNSET_HORIZON' ? '#c2410c' : '#b91c1c';
+
     // Top bricks
     for (let y = 0; y < topH; y += brickH) {
       for (let bx = x; bx < x + w; bx += brickW) {
-        ctx.fillStyle = ((bx + y) % 3 === 0) ? '#b91c1c' : '#dc2626';
+        ctx.fillStyle = ((bx + y) % 3 === 0) ? altColor : baseColor;
         ctx.fillRect(bx, y, Math.min(brickW - 2, x + w - bx), Math.min(brickH - 2, topH - y));
       }
     }
@@ -418,7 +576,7 @@ export class GameRenderer {
     // Bottom bricks
     for (let y = botY; y < botY + botH; y += brickH) {
       for (let bx = x; bx < x + w; bx += brickW) {
-        ctx.fillStyle = ((bx + y) % 3 === 0) ? '#b91c1c' : '#dc2626';
+        ctx.fillStyle = ((bx + y) % 3 === 0) ? altColor : baseColor;
         ctx.fillRect(bx, y, Math.min(brickW - 2, x + w - bx), brickH - 2);
       }
     }
@@ -430,17 +588,22 @@ export class GameRenderer {
     topH: number,
     botY: number,
     botH: number,
-    glow: boolean
+    glow: boolean,
+    sky: SkyTheme
   ) {
     const ctx = this.ctx;
     ctx.save();
+
+    const crystalFill = sky === 'ARCTIC_STORM' ? '#0284c7' : sky === 'SUNSET_HORIZON' ? '#f59e0b' : '#9333ea';
+    const crystalGlint = sky === 'ARCTIC_STORM' ? '#e0f2fe' : sky === 'SUNSET_HORIZON' ? '#fef08a' : '#e9d5ff';
+
     if (glow) {
       ctx.shadowBlur = 10;
-      ctx.shadowColor = '#c084fc';
+      ctx.shadowColor = crystalFill;
     }
 
     // Top crystal
-    ctx.fillStyle = '#9333ea';
+    ctx.fillStyle = crystalFill;
     ctx.beginPath();
     ctx.moveTo(x, 0);
     ctx.lineTo(x + w, 0);
@@ -461,7 +624,7 @@ export class GameRenderer {
     ctx.fill();
 
     // Crystal highlights
-    ctx.strokeStyle = '#e9d5ff';
+    ctx.strokeStyle = crystalGlint;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(x + w * 0.5, 0);
@@ -476,13 +639,25 @@ export class GameRenderer {
     ctx.restore();
   }
 
-  private drawCandyObstacle(x: number, w: number, topH: number, botY: number, botH: number) {
+  private drawCandyObstacle(x: number, w: number, topH: number, botY: number, botH: number, sky: SkyTheme) {
     const ctx = this.ctx;
+    
+    // Theme-reactive candy colors
+    const baseColor = sky === 'CYBER_NEON' ? '#090d16' :
+                      sky === 'DARK_NEBULA' ? '#1e1b4b' :
+                      sky === 'RETRO_AMBER' ? '#451a03' : '#ffffff';
+                      
+    const stripeColor = sky === 'ARCTIC_STORM' ? '#38bdf8' :
+                        sky === 'SUNSET_HORIZON' ? '#ea580c' :
+                        sky === 'CYBER_NEON' ? '#ec4899' :
+                        sky === 'RETRO_AMBER' ? '#fbbf24' :
+                        sky === 'DARK_NEBULA' ? '#a855f7' : '#ef4444';
+
     // Top
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = baseColor;
     ctx.fillRect(x, 0, w, topH);
-    // Red stripes
-    ctx.fillStyle = '#ef4444';
+    // Stripes
+    ctx.fillStyle = stripeColor;
     for (let y = -20; y < topH + 20; y += 22) {
       ctx.beginPath();
       ctx.moveTo(x, y);
@@ -493,9 +668,9 @@ export class GameRenderer {
     }
 
     // Bottom
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = baseColor;
     ctx.fillRect(x, botY, w, botH);
-    ctx.fillStyle = '#ef4444';
+    ctx.fillStyle = stripeColor;
     for (let y = botY - 20; y < botY + botH + 20; y += 22) {
       ctx.beginPath();
       ctx.moveTo(x, y);
@@ -506,19 +681,34 @@ export class GameRenderer {
     }
   }
 
-  private drawNebulaObstacle(x: number, w: number, topH: number, botY: number, botH: number) {
+  private drawNebulaObstacle(x: number, w: number, topH: number, botY: number, botH: number, sky: SkyTheme) {
     const ctx = this.ctx;
-    ctx.fillStyle = '#0f172a';
+    const bodyColor = sky === 'CYBER_NEON' ? '#040714' :
+                      sky === 'ARCTIC_STORM' ? '#082f49' :
+                      sky === 'SUNSET_HORIZON' ? '#270830' :
+                      sky === 'RETRO_AMBER' ? '#180c03' : '#0f172a';
+
+    const strokeColor = sky === 'CYBER_NEON' ? '#06b6d4' :
+                        sky === 'ARCTIC_STORM' ? '#38bdf8' :
+                        sky === 'SUNSET_HORIZON' ? '#f59e0b' :
+                        sky === 'RETRO_AMBER' ? '#d97706' : '#a855f7';
+
+    const runeColor = sky === 'CYBER_NEON' ? '#ec4899' :
+                      sky === 'ARCTIC_STORM' ? '#bae6fd' :
+                      sky === 'SUNSET_HORIZON' ? '#fde047' :
+                      sky === 'RETRO_AMBER' ? '#fbbf24' : '#c084fc';
+
+    ctx.fillStyle = bodyColor;
     ctx.fillRect(x, 0, w, topH);
     ctx.fillRect(x, botY, w, botH);
 
-    ctx.strokeStyle = '#a855f7';
+    ctx.strokeStyle = strokeColor;
     ctx.lineWidth = 2;
     ctx.strokeRect(x, 0, w, topH);
     ctx.strokeRect(x, botY, w, botH);
 
     // Glowing rune
-    ctx.fillStyle = '#c084fc';
+    ctx.fillStyle = runeColor;
     ctx.beginPath();
     ctx.arc(x + w * 0.5, topH - 16, 6, 0, Math.PI * 2);
     ctx.arc(x + w * 0.5, botY + 16, 6, 0, Math.PI * 2);

@@ -5,12 +5,14 @@ import {
   PlayerProfile,
   ObstacleSettings,
   ObstacleTheme,
+  SkyTheme,
   CharacterSkin,
   DailyQuest,
   UserPreferences,
   CloudSavePayload,
   LeaderboardEntry,
-  SkinId
+  SkinId,
+  CommunityChallenge
 } from '../types/game';
 import { INITIAL_SKINS } from '../data/skins';
 import { INITIAL_QUESTS } from '../data/quests';
@@ -22,14 +24,36 @@ const STORAGE_KEY_QUESTS = 'aeroflap_quests_v2';
 const STORAGE_KEY_PREFS = 'aeroflap_prefs_v2';
 const STORAGE_KEY_OFFLINE_QUEUE = 'aeroflap_offline_queue_v2';
 const STORAGE_KEY_LEADERBOARD = 'aeroflap_leaderboard_cache_v2';
+const STORAGE_KEY_COMMUNITY = 'aeroflap_community_challenge_v2';
 
 export const DEFAULT_OBSTACLE_SETTINGS: ObstacleSettings = {
   theme: 'CYBER_LASER',
+  skyTheme: 'CYBER_NEON',
   gapSize: 'NORMAL',
   speed: 'STANDARD',
   pattern: 'STATIC',
   spacing: 'NORMAL',
   glowEffect: true
+};
+
+export const INITIAL_COMMUNITY_CHALLENGE: CommunityChallenge = {
+  id: 'comm_chal_orbit_1',
+  name: 'Operation Celestial Surge',
+  operationCode: 'ORBIT-ALPHA-26',
+  description: 'Unite with pilots across the globe to clear 500,000 obstacles together to unlock community rewards and the Zenith Champion Wings!',
+  targetPipes: 500000,
+  currentPipes: 384750,
+  endsInDays: 5,
+  playerContribution: 0,
+  rewardTitle: 'Zenith Champion Pack & 500 Feathers',
+  rewardDescription: 'Global Wing Badge, 500 Star Feathers reward, and exclusive seasonal profile flair for all contributing pilots.',
+  milestones: [
+    { threshold: 100000, label: 'Stage I: Stratosphere Breach', rewardFeathers: 100, unlocked: true, claimed: false },
+    { threshold: 250000, label: 'Stage II: Ionosphere Glide', rewardFeathers: 200, unlocked: true, claimed: false },
+    { threshold: 500000, label: 'Stage III: Orbital Apex Victory', rewardFeathers: 500, unlocked: false, claimed: false }
+  ],
+  completed: false,
+  communityRewardClaimed: false
 };
 
 export const DEFAULT_PREFERENCES: UserPreferences = {
@@ -171,6 +195,83 @@ export function savePreferences(prefs: UserPreferences): void {
   } catch (e) {
     console.error('Error saving preferences', e);
   }
+}
+
+export function loadCommunityChallenge(): CommunityChallenge {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_COMMUNITY);
+    if (raw) {
+      return { ...INITIAL_COMMUNITY_CHALLENGE, ...JSON.parse(raw) };
+    }
+  } catch (e) {
+    console.error('Error loading community challenge', e);
+  }
+  return INITIAL_COMMUNITY_CHALLENGE;
+}
+
+export function saveCommunityChallenge(challenge: CommunityChallenge): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_COMMUNITY, JSON.stringify(challenge));
+  } catch (e) {
+    console.error('Error saving community challenge', e);
+  }
+}
+
+export function contributePipesToCommunity(pipesPassed: number): CommunityChallenge {
+  const current = loadCommunityChallenge();
+  if (pipesPassed <= 0) return current;
+
+  // Add user contribution + simulate concurrent global collective pilot activity
+  const simulatedGlobalActivity = Math.floor(Math.random() * 4) + 1;
+  const totalAdded = pipesPassed + simulatedGlobalActivity;
+  const newCurrent = Math.min(current.targetPipes, current.currentPipes + totalAdded);
+  const newPlayerContrib = current.playerContribution + pipesPassed;
+
+  const updatedMilestones = current.milestones.map((m) => ({
+    ...m,
+    unlocked: m.unlocked || newCurrent >= m.threshold
+  }));
+
+  const updated: CommunityChallenge = {
+    ...current,
+    currentPipes: newCurrent,
+    playerContribution: newPlayerContrib,
+    milestones: updatedMilestones,
+    completed: newCurrent >= current.targetPipes
+  };
+
+  saveCommunityChallenge(updated);
+  return updated;
+}
+
+export function claimCommunityMilestone(milestoneIndex: number): { updated: CommunityChallenge; rewardFeathers: number } {
+  const current = loadCommunityChallenge();
+  const milestone = current.milestones[milestoneIndex];
+  if (!milestone || !milestone.unlocked || milestone.claimed) {
+    return { updated: current, rewardFeathers: 0 };
+  }
+  const reward = milestone.rewardFeathers;
+  const updatedMilestones = [...current.milestones];
+  updatedMilestones[milestoneIndex] = { ...milestone, claimed: true };
+  const updated: CommunityChallenge = {
+    ...current,
+    milestones: updatedMilestones
+  };
+  saveCommunityChallenge(updated);
+  return { updated, rewardFeathers: reward };
+}
+
+export function claimCommunityGrandReward(): { updated: CommunityChallenge; rewardFeathers: number } {
+  const current = loadCommunityChallenge();
+  if (!current.completed || current.communityRewardClaimed) {
+    return { updated: current, rewardFeathers: 0 };
+  }
+  const updated: CommunityChallenge = {
+    ...current,
+    communityRewardClaimed: true
+  };
+  saveCommunityChallenge(updated);
+  return { updated, rewardFeathers: 500 };
 }
 
 // Global leaderboard seed generator for vibrant competition
